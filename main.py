@@ -20,13 +20,12 @@ url_test = "https://testnet.binance.vision/"
 url_main="https://api.binance.com/"
 
 def get_all_symbols():
-    allsymbols = []
-
     r = requests.get(url="https://api.binance.com/api/v3/exchangeInfo")
-    for k in r.json()['symbols']:
-        if k['status'] == 'TRADING':
-            allsymbols.append(k['symbol'].lower())
-    return allsymbols
+    return [
+        k['symbol'].lower()
+        for k in r.json()['symbols']
+        if k['status'] == 'TRADING'
+    ]
 
 def find_triangular_pairs(symbols):
     triangular_pairs = []
@@ -79,22 +78,20 @@ async def get_order_book(symbol, limit=100):
         'limit': limit
     }
     response = requests.get(BASE_URL, params=params)
-    data = response.json()
-    return data
+    return response.json()
 
 async def check_liquidity(symbol, amount, price, side):
     order_book = await get_order_book(symbol, 100)
-    if side == 'buy':
-        orders = order_book['asks']
-    else:
-        orders = order_book['bids']
-
+    orders = order_book['asks'] if side == 'buy' else order_book['bids']
     cumulative_volume = 0.0
     for order in orders:
         order_price, volume = float(order[0]), float(order[1])
-        if side == 'buy' and order_price <= price:
-            cumulative_volume += volume
-        elif side == 'sell' and order_price >= price:
+        if (
+            side == 'buy'
+            and order_price <= price
+            or side == 'sell'
+            and order_price >= price
+        ):
             cumulative_volume += volume
         else:
             break
@@ -229,8 +226,6 @@ async def find_arbitrage_opportunities(triangular_pairs, maker_fee=0.001, taker_
                         print('all orders Successfull')
             else:
                 print("no liquidity")
-                pass
-
         else:
             print("trade not successful")
 
